@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Marblescape</title>
+<meta name="description" content="Roll a marble through 8 worlds of wild tracks: glass tubes, slamming hammers, swinging platforms and giant boss balls chasing you down. Play free in your browser.">
+<meta name="theme-color" content="#1d63cf">
+<meta property="og:title" content="Marblescape">
+<meta property="og:description" content="Roll, race and outrun bosses across 8 worlds. Play free in your browser.">
+<meta property="og:image" content="img/icon-512.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="img/icon-192.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="stylesheet" href="play/vendor/fonts/fonts.css">
+<style>
+/* A one-page site for the game: sky hero, screenshot strip, features, footer. Same fonts and colours as the game. */
+:root {
+  --sky-1: #1d63cf; --sky-2: #5fb4ff; --sky-3: #c4e8ff;
+  --ink: #141133; --ink-dim: #4b4f73; --paper: #f6f8ff; --card: #ffffff; --line: #dfe4f3;
+  --gold: #ffd23f; --gold-deep: #c98a07; --rose: #ff4f86; --mint: #2fbf71;
+  --f-display: 'Bungee', 'Arial Black', sans-serif; --f-body: 'Chakra Petch', 'Avenir Next', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font: 17px/1.55 var(--f-body); color: var(--ink); background: var(--paper); }
+a { color: inherit; }
+img { display: block; max-width: 100%; }
+
+/* hero */
+.hero { position: relative; overflow: hidden; color: #fff; text-align: center; padding: calc(56px + env(safe-area-inset-top)) 16px 72px; background: linear-gradient(180deg, var(--sky-1), var(--sky-2) 62%, var(--sky-3)); }
+.hero::after { content: ''; position: absolute; left: -10%; right: -10%; bottom: -60px; height: 120px; background: var(--paper); border-radius: 50% 50% 0 0; }
+.hero > * { position: relative; z-index: 1; }
+.icon { width: 132px; height: 132px; margin: 0 auto 20px; border-radius: 30px; box-shadow: 0 14px 34px rgba(10, 30, 90, 0.35); }
+h1 { margin: 0; font: 400 clamp(46px, 13vw, 92px)/0.95 var(--f-display); letter-spacing: 0.01em;
+  text-shadow: 0 3px 0 #ff6a8e, 0 6px 0 #d72f62, 0 9px 0 #8e1b4b, 0 18px 26px rgba(0, 0, 0, 0.3); }
+h1 span { display: inline; }
+@media (max-width: 560px) { h1 { font-size: clamp(44px, 17vw, 80px); } h1 span { display: block; } }
+.tag { margin: 18px auto 30px; max-width: 30ch; font: 600 clamp(18px, 4.6vw, 22px)/1.35 var(--f-body); text-shadow: 0 2px 6px rgba(0, 0, 0, 0.25); }
+.cta { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 54px; padding: 0 28px; border-radius: 16px; text-decoration: none; font: 400 18px/1 var(--f-display); }
+.btn.primary { color: #3a1f00; background: var(--gold); box-shadow: 0 5px 0 var(--gold-deep), 0 12px 24px rgba(0, 0, 0, 0.18); }
+.btn.primary:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--gold-deep); }
+.btn.soon { color: #fff; background: rgba(10, 8, 40, 0.35); border: 1px solid rgba(255, 255, 255, 0.45); font-family: var(--f-body); font-weight: 700; font-size: 15px; letter-spacing: 0.04em; cursor: default; }
+.btn:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+/* screenshots */
+.shots { max-width: 1120px; margin: -8px auto 0; padding: 0 16px; }
+.strip { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 6px 2px 18px; scrollbar-width: thin; }
+.strip figure { flex: none; width: min(62vw, 250px); margin: 0; scroll-snap-align: center; }
+.strip img { width: 100%; aspect-ratio: 1320 / 2868; object-fit: cover; border-radius: 24px; box-shadow: 0 10px 26px rgba(20, 17, 51, 0.22); background: #cfe3ff; }
+.strip figcaption { margin-top: 10px; text-align: center; font-weight: 700; font-size: 15px; color: var(--ink-dim); }
+
+/* features */
+.section { max-width: 980px; margin: 0 auto; padding: 44px 16px; }
+h2 { margin: 0 0 22px; text-align: center; font: 400 clamp(26px, 6vw, 36px)/1.1 var(--f-display); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 18px 16px; }
+.card b { display: block; font: 400 17px/1.2 var(--f-display); margin-bottom: 6px; }
+.card p { margin: 0; color: var(--ink-dim); font-size: 16px; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; }
+.how { text-align: center; color: var(--ink-dim); max-width: 46ch; margin: 0 auto; }
+.how strong { color: var(--ink); }
+
+footer { border-top: 1px solid var(--line); padding: 26px 16px calc(30px + env(safe-area-inset-bottom)); text-align: center; color: var(--ink-dim); font-size: 15px; }
+footer nav { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 10px; font-weight: 700; }
+footer a { text-decoration: none; color: var(--ink); }
+footer a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <img class="icon" src="img/icon-512.png" width="132" height="132" alt="Marblescape app icon: a blue glass marble rolling up an orange track">
+  <h1><span>Marble</span><span>scape</span></h1>
+  <p class="tag">Roll, race and outrun giant boss balls across eight wild worlds.</p>
+  <div class="cta">
+    <a class="btn primary" href="play/">Play in your browser</a>
+    <span class="btn soon">Coming soon to the App Store</span>
+  </div>
+</header>
+
+<main>
+  <section class="shots" aria-label="Screenshots">
+    <div class="strip">
+      <figure><img src="img/shot-1.jpg" alt="The title screen over a marble on a sky track" loading="lazy"><figcaption>Hold to roll</figcaption></figure>
+      <figure><img src="img/shot-2.jpg" alt="Rolling through a glass tube over the sea" loading="lazy"><figcaption>Glass tubes</figcaption></figure>
+      <figure><img src="img/shot-3.jpg" alt="A giant snowball chasing the marble" loading="lazy"><figcaption>Boss chases</figcaption></figure>
+      <figure><img src="img/shot-4.jpg" alt="A neon city at night" loading="lazy"><figcaption>8 worlds</figcaption></figure>
+      <figure><img src="img/shot-5.jpg" alt="A track in space with a gem and a power-up" loading="lazy"><figcaption>Gems and power-ups</figcaption></figure>
+      <figure><img src="img/shot-6.jpg" alt="Flying over landing bands from x1 to x5" loading="lazy"><figcaption>Bonus ramp</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What's inside</h2>
+    <div class="grid">
+      <div class="card"><b><span class="dot" style="background:#2f86dd"></span>8 worlds</b><p>Meadows, ocean bays, canyons, snow peaks, sky islands, a neon city, a volcano and a space station, each with its own scenery and music.</p></div>
+      <div class="card"><b><span class="dot" style="background:#ff4f86"></span>Boss chases</b><p>At the end of every world a giant ball rolls after you. Keep moving or get flattened.</p></div>
+      <div class="card"><b><span class="dot" style="background:#ffc61a"></span>Wild tracks</b><p>Loops, glass tubes, half-pipes, slamming hammers, swinging platforms, brick walls, ice and conveyor belts.</p></div>
+      <div class="card"><b><span class="dot" style="background:#b45cff"></span>Gems and power-ups</b><p>Grab risky gems, then magnets, shields and double coins. Land on x5 at the bonus ramp.</p></div>
+      <div class="card"><b><span class="dot" style="background:#2fbf71"></span>Races and ghosts</b><p>Race rival marbles, and chase a ghost of your own best run on every level.</p></div>
+      <div class="card"><b><span class="dot" style="background:#ff8a1a"></span>Unlock your style</b><p>22 ball skins, 9 trails and 5 finish celebrations, plus trophies and a daily reward.</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>How to play</h2>
+    <p class="how"><strong>Hold</strong> anywhere to roll. <strong>Slide</strong> sideways to steer. <strong>Pull your thumb down</strong> to stop or go backwards. On a computer, use the arrow keys.</p>
+  </section>
+</main>
+
+<footer>
+  <nav><a href="play/">Play</a><a href="privacy.html">Privacy policy</a><a href="privacy.html#contact">Support</a></nav>
+  <p>No ads, no accounts, no tracking. © 2026 Waqas Riaz</p>
+</footer>
+</body>
+</html>
