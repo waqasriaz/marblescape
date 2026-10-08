@@ -547,6 +547,8 @@ window.addEventListener('keydown', (e) => {
     if (!G.demo) e.preventDefault();
     In.keys.add(k);
     if (G.phase === 'ready') startRun();
+  } else if (e.code === 'Escape' && ['shop', 'levels', 'ach'].includes(G.phase)) {
+    $(`#btn-${G.phase === 'ach' ? 'ach' : G.phase}-back`).click();
   } else if (e.code === 'Escape' || e.code === 'KeyP') {
     if (G.phase === 'paused') resume(); else pause();
   }
