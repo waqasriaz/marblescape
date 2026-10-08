@@ -1,5 +1,5 @@
 /*
- * Marblescape — level generator.
+ * Marble Scape — level generator.
  * Pure data, no three.js or DOM: a seeded builder lays a floating track sample by sample,
  * modules add obstacles and pickups, and build() turns it into meshes for physics and rendering.
  */

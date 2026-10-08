@@ -1,5 +1,5 @@
 /*
- * Marblescape — race simulation on top of Rapier.
+ * Marble Scape — race simulation on top of Rapier.
  * No DOM and no three.js: the game and tools/levels.mjs both drive it.
  * RAPIER is passed in so the browser can use the ES build and Node the CommonJS one.
  */

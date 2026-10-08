@@ -1,4 +1,4 @@
-/* Marblescape — game flow, input, HUD, shop and saving. */
+/* Marble Scape — game flow, input, HUD, shop and saving. */
 import RAPIER from '../vendor/rapier.es.js';
 import { generateLevel, WORLDS } from './gen.js';
 import { Sim, P } from './physics.js';

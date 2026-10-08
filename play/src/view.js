@@ -1,4 +1,4 @@
-/* Marblescape — three.js view: sky, track, obstacles, scenery, balls, particles and the chase camera. */
+/* Marble Scape — three.js view: sky, track, obstacles, scenery, balls, particles and the chase camera. */
 import { mulberry32 } from './gen.js';
 import { P } from './physics.js';
 import { paintSkin, skinById, RIVAL_SKINS } from './skins.js';

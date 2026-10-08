@@ -1,4 +1,4 @@
-/* Marblescape — ball trails and finish celebrations sold in the shop, and their shop previews. */
+/* Marble Scape — ball trails and finish celebrations sold in the shop, and their shop previews. */
 
 export const TRAILS = [
   { id: 'skin', name: 'Classic', price: 0, cols: null },

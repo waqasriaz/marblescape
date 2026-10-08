@@ -1,4 +1,4 @@
-/* Marblescape — synthesized sound effects and music (no audio files). */
+/* Marble Scape — synthesized sound effects and music (no audio files). */
 
 let ctx = null, master = null, sfx = null, music = null, noiseBuf = null;
 let muted = false;

@@ -1,5 +1,5 @@
 /*
- * Marblescape — ball skins. Each skin paints a 512x256 equirectangular texture on a canvas
+ * Marble Scape — ball skins. Each skin paints a 512x256 equirectangular texture on a canvas
  * and sets the material's finish. The shop draws its swatches from the same painter.
  */
 

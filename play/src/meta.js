@@ -1,4 +1,4 @@
-/* Marblescape — achievements, the daily reward and best-run ghosts. Works on the save data object. */
+/* Marble Scape — achievements, the daily reward and best-run ghosts. Works on the save data object. */
 
 const starsTotal = (S) => Object.values(S.stars || {}).reduce((a, s) => a + s, 0);
 const bosses = (S) => Object.keys(S.bossBeat || {}).length;
