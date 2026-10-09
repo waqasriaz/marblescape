@@ -721,15 +721,22 @@ export function generateLevel(n, opts = {}) {
   }
   if (chase) putPower(chase.s0 - 3, pr() < 0.6 ? 'shield' : 'x2');
 
-  // Finish line. Except in races, a bonus run follows: four speed pads, a kicker, and landing bands
-  // worth x1 to x5 depending on how far you fly (so on how many pads you hit).
   const isRace = !chasePlan && n % 4 === 0;
+  const bonus = layFinish(b, !isRace);
+
+  if (chase) chase.s1 = b.finish.s;
+  return build(b, { n, world, d, race: isRace, boss: !!chasePlan, showcase: false, chase, bonus, powerups, plan: chasePlan ? [...plan, 'boss', ...chasePlan] : plan, sections });
+}
+
+// Finish line. Except in races, a bonus run follows: four speed pads, a kicker, and landing bands
+// worth x1 to x5 depending on how far you fly (so on how many pads you hit).
+function layFinish(b, withBonus) {
   b.straight(3, { w1: 8 });
   b.railsOn();
   b.finish = b.frame();
   b.zone('finish', b.finish, 1);
   let bonus = null;
-  if (!isRace) {
+  if (withBonus) {
     b.straight(4);
     const pads = [];
     // Just off the middle, alternating: rolling dead straight misses them all, a gentle weave hits every one.
@@ -765,8 +772,54 @@ export function generateLevel(n, opts = {}) {
     b.railsOff();
   }
 
-  if (chase) chase.s1 = b.finish.s;
-  return build(b, { n, world, d, race: isRace, boss: !!chasePlan, showcase: false, chase, bonus, powerups, plan: chasePlan ? [...plan, 'boss', ...chasePlan] : plan, sections });
+  return bonus;
+}
+
+// The how-to-play track: short and walled, one lesson per stretch. `tutorial.steps` says where each starts.
+export function generateTutorial() {
+  const world = WORLDS[0], b = new Builder(mulberry32(4242));
+  b.G = world.gravity || 24;
+  const steps = [], powerups = [];
+  const step = (id, extra = {}) => steps.push(Object.assign({ id, s: b.s }, extra));
+  b.railsOn();
+  b.straight(9);
+  b.checkpoints.push(Object.assign(b.samples[5], {}));
+  step('roll');
+  b.straight(18, { w1: 6 });
+  // A gentle S-bend with coins on alternate sides.
+  step('steer');
+  const i0 = b.idx();
+  b.curve(25, 18);
+  b.curve(-50, 18);
+  b.curve(25, 18);
+  b.coinsAlong(i0, b.idx(), 8, 'zigzag');
+  b.straight(6);
+  // Stop on the red line; the barrier just past it lifts once you have.
+  step('stop');
+  b.straight(8);
+  const line = b.frame();
+  b.zone('stopline', line, 3);
+  steps[steps.length - 1].line = [line.s, line.s + 3];
+  b.straight(3.6);
+  b.obstacles.push(Object.assign(b.frame(), { type: 'gate' }));
+  b.straight(8);
+  step('power');
+  b.straight(11);
+  { const f = b.frame(), p = b.at(f, 0, 0.95); powerups.push({ x: p[0], y: p[1], z: p[2], s: f.s, kind: 'shield' }); }
+  b.straight(9);
+  step('gem');
+  b.straight(6);
+  b.gem(b.frame());
+  b.straight(12);
+  step('boost');
+  b.straight(5);
+  b.zone('boost', b.frame(), 3.5);
+  b.straight(16);
+  step('finish');
+  b.railsOff();
+  const bonus = layFinish(b, true);
+  return build(b, { n: 0, world, d: 0, race: false, boss: false, showcase: false, chase: null, bonus, powerups, tutorial: { steps },
+    plan: steps.map((x) => x.id), sections: steps.map((x) => ({ name: x.id, s: x.s })) });
 }
 
 /* ---------------- geometry ---------------- */

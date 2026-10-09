@@ -216,6 +216,15 @@ p { margin: 0; }
 .place small { font: 400 16px/1 var(--f-display); color: var(--ink); margin-left: 4px; }
 .bump { animation: bump 0.25s; }
 @keyframes bump { 50% { transform: scale(1.15); } }
+.coach { position: fixed; left: 50%; top: calc(124px + var(--safe-t)); z-index: 7; transform: translateX(-50%); width: min(calc(100vw - 32px), 400px);
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px 12px 12px 14px; border-radius: 18px;
+  background: rgba(18, 15, 48, 0.9); border: 2px solid var(--gold); box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35); animation: coach 0.35s cubic-bezier(.2, .9, .3, 1.2) both; }
+.coach p { margin: 0; font: 700 17px/1.3 var(--f-body); color: var(--ink); text-align: left; }
+.coach-step { font: 400 12px/1 var(--f-display); color: #3a1f00; background: var(--gold); border-radius: 8px; padding: 6px 7px; white-space: nowrap; }
+.coach-skip { font: 700 12px/1 var(--f-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); border-radius: 999px; padding: 9px 11px; min-height: 36px; cursor: pointer; touch-action: manipulation; }
+.coach-skip:focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+body:has(#coach:not([hidden])) .flash.small { top: 34%; }
+@keyframes coach { from { opacity: 0; transform: translate(-50%, -10px) scale(0.96); } to { opacity: 1; transform: translate(-50%, 0); } }
 .flash { position: fixed; left: 0; right: 0; top: 30%; z-index: 6; text-align: center; pointer-events: none; font: 400 clamp(40px, 13vw, 64px)/1 var(--f-display); color: var(--gold); text-shadow: 0 4px 0 #7a4a00, 0 0 30px rgba(255, 210, 63, 0.5); animation: pop 1.6s ease-out both; }
 .flash.small { font-size: clamp(22px, 7vw, 30px); color: #ffffff; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.4); top: 22%; animation-duration: 1.1s; }
 @keyframes pop { 0% { transform: scale(0.4); opacity: 0; } 15% { transform: scale(1.1); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
@@ -268,6 +277,7 @@ p { margin: 0; }
   </div>
   <div class="bosspill" id="hud-boss" hidden><span class="skull" aria-hidden="true"></span><span id="hud-boss-name">Boss</span><span class="gap" id="hud-boss-gap"></span></div>
 </header>
+<div id="coach" class="coach" hidden><span class="coach-step" id="coach-step">1 / 7</span><p id="coach-text"></p><button class="coach-skip" id="btn-tut-skip">Skip</button></div>
 <div id="flash" class="flash" hidden></div>
 <div id="toast" class="toast" hidden><span class="trophy" aria-hidden="true"></span><span><b id="toast-name"></b><small id="toast-sub"></small></span></div>
 <div id="count" class="count" hidden></div>
@@ -290,6 +300,7 @@ p { margin: 0; }
       <button class="btn" id="btn-ach">Trophies</button>
     </div>
     <div class="chips">
+      <button class="chip" id="btn-howto">How to play</button>
       <button class="chip" id="btn-sound">Sound: on</button>
       <button class="chip" id="btn-quality">Graphics: auto</button>
     </div>

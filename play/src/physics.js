@@ -69,6 +69,7 @@ export class Sim {
     this.swings = this.obs.filter((o) => o.type === 'swing');
     this.walls = this.obs.filter((o) => o.type === 'bricks' || o.type === 'glass');
     this.panes = this.obs.filter((o) => o.type === 'glass');
+    this.gates = this.obs.filter((o) => o.type === 'gate');
     this.tiles = L.tiles.map((t) => {
       const body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(t.x, t.y - 0.25, t.z).setRotation(qY(t.yaw)));
       world.createCollider(R.ColliderDesc.cuboid(t.hw, 0.25, t.hl).setFriction(1.0), body);
@@ -286,6 +287,12 @@ export class Sim {
       case 'glass': {
         const make = () => w.createCollider(R.ColliderDesc.cuboid(o.w / 2, 0.9, 0.06).setTranslation(o.x, o.y + 0.9, o.z).setRotation(qY(o.yaw)).setFriction(0.1).setRestitution(0.2));
         const ob = { type: o.type, o, body: null, col: make(), broken: false, update() {}, reset: () => { if (ob.broken) { ob.col = make(); ob.broken = false; } } };
+        return ob;
+      }
+      case 'gate': {
+        // Tutorial barrier: shut until the game opens it (once you've stopped on the line in front).
+        const col = w.createCollider(R.ColliderDesc.cuboid(o.w / 2 + 0.3, 0.6, 0.15).setTranslation(o.x, o.y + 0.6, o.z).setRotation(qY(o.yaw)).setFriction(0.3).setRestitution(0.1));
+        const ob = { type: o.type, o, body: null, open: false, update() {}, openGate: () => { if (!ob.open) { ob.open = true; w.removeCollider(col, true); } } };
         return ob;
       }
       case 'endwall': {
@@ -568,6 +575,8 @@ export class Sim {
         if (Math.abs(uh - lane) < clear && ds > 1.5) hold = 0;   // still in the way: wait for it
       }
     }
+    // A closed tutorial barrier: stop in front of it.
+    for (const g of this.gates) { const ds = g.o.s - b.s; if (!g.open && ds > 0 && ds < 4.5) hold = 0; }
     // A glass pane we're too slow for: back off and take a run at it.
     for (const g of this.panes) {
       const ds = g.o.s - b.s;

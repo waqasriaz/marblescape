@@ -521,6 +521,17 @@ export class View {
       else if (z.type === 'pad') { const m = new THREE.Mesh(this.quadOn(z, z.len, z.w - 0.3, 0.03, 0.6), padMat); m.receiveShadow = true; g.add(m); }
       else if (z.type === 'checkpoint') this.checkFlags.push(this.arch(z, 6.0, th.edge, false));
       else if (z.type === 'finish') this.arch(z, 6.8, '#ffffff', true);
+      else if (z.type === 'stopline') {
+        // Tutorial: a red STOP band across the track.
+        const tex = this.own(canvasTex(256, 128, (c, w, h) => {
+          for (let x = 0; x < w; x += 32) { c.fillStyle = (x / 32) % 2 ? '#ffffff' : '#e8323f'; c.fillRect(x, 0, 32, 14); c.fillRect(x, h - 14, 32, 14); }
+          c.fillStyle = '#e8323f'; c.fillRect(0, 14, w, h - 28);
+          c.fillStyle = '#ffffff'; c.font = '400 64px Bungee, Arial Black, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('STOP', w / 2, h / 2 + 4);
+        }, { repeat: false }));
+        const m = new THREE.Mesh(this.quadOn(z, z.len, z.w - 0.3, 0.03, 1 / z.len), this.own(new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 })));
+        m.receiveShadow = true;
+        g.add(m);
+      }
       else if (z.type === 'speed') {
         // A narrow chevron strip just off the middle of the bonus run.
         const Rt = rightV(z.yaw), c = Object.assign({}, z, { x: z.x + Rt.x * z.u, z: z.z + Rt.z * z.u });
@@ -1029,6 +1040,16 @@ export class View {
         bar.rotation.y = f.yaw;
         g.add(bar);
         return { o, root: null, update: null, pane };
+      }
+      case 'gate': {
+        // Two posts and a striped bar that lifts away once the barrier opens.
+        const metal = std('#3a3f4c', { metalness: 0.4 }), half = f.w / 2 + 0.35;
+        for (const sd of [-1, 1]) { const post = mesh(new THREE.BoxGeometry(0.3, 1.5, 0.3), metal); post.position.set(f.x + Rt.x * half * sd, f.y + 0.75, f.z + Rt.z * half * sd); post.rotation.y = f.yaw; g.add(post); }
+        const bar = mesh(new THREE.BoxGeometry(half * 2, 0.32, 0.26), this.own(new THREE.MeshStandardMaterial({ map: TEX.stripes, roughness: 0.4 })));
+        bar.position.set(f.x, f.y + 0.6, f.z);
+        bar.rotation.y = f.yaw;
+        g.add(bar);
+        return { o, root: null, update: null, gateBar: bar, baseY: f.y + 0.6 };
       }
       case 'endwall': {
         const side = this.own(new THREE.MeshStandardMaterial({ map: TEX.hazard, roughness: 0.5 })), top = std(th.edge);
@@ -1614,6 +1635,7 @@ export class View {
         continue;
       }
       if (ov.pane) { ov.pane.visible = !ov.o.broken; continue; }
+      if (ov.gateBar) { const want = ov.o.open ? ov.baseY + 3.2 : ov.baseY; ov.gateBar.position.y += (want - ov.gateBar.position.y) * Math.min(1, dt * 5); continue; }
       if (ov.fan) {
         ov.hub.rotation.x += dt * 14;
         ov.puffT -= dt;

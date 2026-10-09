@@ -1,6 +1,6 @@
 /* Marble Scape — game flow, input, HUD, shop and saving. */
 import RAPIER from '../vendor/rapier.es.js';
-import { generateLevel, WORLDS } from './gen.js';
+import { generateLevel, generateTutorial, WORLDS } from './gen.js';
 import { Sim, P } from './physics.js';
 import { View } from './view.js';
 import { Sound, MENU_SONG, BOSS_SONG } from './audio.js';
@@ -45,6 +45,7 @@ function setPhase(p, screen = p) {
   G.phaseT = 0;
   for (const [k, sel] of Object.entries(SCREENS)) $(sel).hidden = k !== screen;
   $('#hud').hidden = G.demo;
+  if (p !== 'play' && p !== 'won') $('#coach').hidden = true;
   // Keep a held thumb through the bonus run after the finish line.
   if (p !== 'play' && p !== 'count' && !(p === 'won' && G.bonusWait)) endTouch();
   if (p === 'count') G.count = 4;
@@ -54,7 +55,7 @@ function loadLevel(n, demo) {
   if (G.sim) G.sim.dispose();
   G.n = n;
   G.demo = demo;
-  G.L = generateLevel(n);
+  G.L = n === 0 ? generateTutorial() : generateLevel(n);
   G.sim = new Sim(RAPIER, G.L, { autopilot: demo });
   view.load(G.L, G.sim, Save.data.skin);
   G.coins = 0;
@@ -149,8 +150,11 @@ function play(n) {
   keepAwake();
   clearInterval(G.autoTimer);
   loadLevel(n, false);
-  $('#ready-world').textContent = G.L.world.name;
-  $('#ready-title').textContent = `Level ${n}`;
+  const tut = !!G.L.tutorial;
+  $('#ready-world').textContent = tut ? 'How to play' : G.L.world.name;
+  $('#ready-title').textContent = tut ? 'Tutorial' : `Level ${n}`;
+  G.tut = tut ? { i: 0, gem: false, note: '', noteT: 0, key: '', shown: 0, pending: false } : null;
+  $('#coach').hidden = true;
   const badge = $('#ready-race');
   badge.hidden = !G.L.race && !G.L.boss;
   badge.className = 'badge' + (G.L.boss ? ' boss' : '');
@@ -159,10 +163,10 @@ function play(n) {
   $('#hud-boss-name').textContent = G.L.boss ? G.L.world.boss.name : '';
   $('#ready-go').textContent = isTouch ? (G.L.race ? 'Touch to start the race' : 'Touch to start') : 'Press ↑ to start';
   if (!isTouch) $('.howto span:last-child').textContent = '↑ rolls, ↓ brakes and reverses, ← → steer. P pauses.';
-  $('#hud-level').textContent = `LEVEL ${n}`;
+  $('#hud-level').textContent = tut ? 'TUTORIAL' : `LEVEL ${n}`;
   $('#hud-place').hidden = !G.L.race;
   $('#hud-coin-n').textContent = '0';
-  const best = Save.data.best[n], ghost = loadGhost(n);
+  const best = tut ? null : Save.data.best[n], ghost = tut ? null : loadGhost(n);
   view.setGhost(ghost);
   $('#ready-best').hidden = best == null;
   if (best != null) $('#ready-best').textContent = `Your best: ${best.toFixed(1)} s${ghost ? ' · race your ghost' : ''}`;
@@ -185,7 +189,7 @@ function onFinish(place) {
   G.bonusWait = !!G.L.bonus;
   G.bonusAt = 0;
   G.padN = 0;
-  if (G.result.best) {
+  if (G.result.best && !G.L.tutorial) {
     Save.data.best[G.n] = time;
     saveGhost(Save.data, G.n, time, G.rec);
     if (prev != null) Save.data.stats.ghostBeats++;
@@ -200,6 +204,7 @@ function onFinish(place) {
 
 function completePanel() {
   const r = G.result, n = G.n;
+  if (G.L.tutorial) { tutorialPanel(); return; }
   const stars = r.falls === 0 ? 3 : r.falls <= 2 ? 2 : 1;
   // Bosses pay 100, plus 150 the first time you outrun each one.
   const firstBoss = G.L.boss && !Save.data.bossBeat[G.L.world.id];
@@ -225,6 +230,71 @@ function completePanel() {
     actions: [
       { label: `Next level`, primary: true, auto: 6, fn: () => play(n + 1) },
       { label: 'Replay', fn: () => play(n) },
+      { label: 'Home', ghost: true, fn: toTitle },
+    ],
+  });
+}
+
+/* ---------------- how-to-play tutorial ---------------- */
+// One line per lesson: [touch screen, keyboard].
+const TUT_TEXT = {
+  roll: ['Hold anywhere on the screen to roll', 'Hold ↑ to roll'],
+  steer: ['Slide your thumb left and right to steer. Grab the coins!', 'Use ← and → to steer. Grab the coins!'],
+  stop: ['Pull your thumb down to stop on the red line', 'Press ↓ to stop on the red line'],
+  power: ['Roll through power-ups. A shield saves you from one fall', 'Roll through power-ups. A shield saves you from one fall'],
+  gem: ['Purple gems are worth 5 coins', 'Purple gems are worth 5 coins'],
+  boost: ['Yellow boost strips launch you forward', 'Yellow boost strips launch you forward'],
+  finish: ['Finish! Weave over the blue pads, then fly for a bonus', 'Finish! Weave over the blue pads, then fly for a bonus'],
+};
+// Moves through the lessons as you complete each one; the barrier opens once you've stopped on the line.
+function tutorialTick(dt) {
+  const T = G.tut, steps = G.L.tutorial.steps, p = G.sim.player, v = p.body.linvel(), sp = Math.hypot(v.x, v.z);
+  const st = steps[T.i], next = steps[T.i + 1];
+  let done = false;
+  if (st.id === 'roll') done = p.s > st.s + 8;
+  else if (st.id === 'stop') {
+    const onLine = p.s > st.line[0] - 1.5 && p.s < st.line[1] + 1;
+    if (onLine && sp < 1 && (G.lastThrottle < 0.4 || p.ai)) {
+      for (const g of G.sim.gates) g.openGate();
+      T.note = isTouch ? 'Nice stop! Pull down further to roll backwards.' : 'Nice stop! Hold ↓ longer to roll backwards.';
+      T.noteT = 1.5;
+      Sound.checkpoint();
+      buzz(20);
+      done = true;
+    }
+  } else if (st.id === 'power') done = G.sim.power.shield > 0 || p.s > next.s - 1;
+  else if (st.id === 'gem') done = T.gem || p.s > next.s - 1;
+  else if (next) done = p.s > next.s - 1;
+  // Every lesson stays up long enough to read (stopping still opens the barrier at once).
+  T.shown += dt;
+  if (done) T.pending = true;
+  if (T.pending && next && T.shown > 1.3 && T.noteT <= 0) { T.i++; T.pending = false; T.shown = 0; }
+  T.noteT = Math.max(0, T.noteT - dt);
+  const text = T.noteT > 0 ? T.note : TUT_TEXT[steps[T.i].id][isTouch ? 0 : 1];
+  const key = `${T.i}|${text}`;
+  if (T.key !== key) {
+    T.key = key;
+    const c = $('#coach');
+    $('#coach-text').textContent = text;
+    $('#coach-step').textContent = `${T.i + 1} / ${steps.length}`;
+    c.hidden = true; void c.offsetWidth; c.hidden = false;
+  }
+}
+function tutorialPanel() {
+  const first = !Save.data.tutorialDone;
+  Save.data.tutorialDone = true;
+  if (first) Save.data.coins += 50;
+  Save.save();
+  achievements();
+  panel('complete', {
+    win: true,
+    eyebrow: 'How to play',
+    title: "You're ready!",
+    text: isTouch ? 'Hold to roll, slide to steer, pull down to stop. Have fun!' : '↑ rolls, ← → steer, ↓ stops. Have fun!',
+    stats: first ? [['Tutorial reward', '+50']] : [],
+    actions: [
+      { label: `Play level ${Save.data.level}`, primary: true, auto: 8, fn: () => play(Save.data.level) },
+      { label: 'Tutorial again', fn: () => play(0) },
       { label: 'Home', ghost: true, fn: toTitle },
     ],
   });
@@ -458,6 +528,7 @@ function handleEvents(quiet) {
         G.coins += val;
         Save.data.stats.coins += val;
         if (c.gem) Save.data.stats.gems++;
+        if (c.gem && G.tut) G.tut.gem = true;
         G.combo = s.t - G.comboT < 1.2 ? G.combo + 1 : 0;
         G.comboT = s.t;
         if (c.gem) { Sound.gem(); flash(`+${val}`, true); buzz(15); } else Sound.coin(Math.min(12, G.combo));
@@ -619,8 +690,11 @@ function tick(dt) {
       break;
     }
     case 'play': {
-      s.step(dt, input());
+      const ctl = input();
+      G.lastThrottle = ctl.active ? ctl.throttle : 1;
+      s.step(dt, ctl);
       handleEvents(false);
+      if (G.tut) tutorialTick(dt);
       const rt = s.t - G.t0;
       if (G.rec && rt * GHOST_HZ >= G.rec.length / 3) { const p = s.player.body.translation(); G.rec.push(p.x, p.y, p.z); }
       // Auto graphics: after a 2 s warm-up, average 4 s of real frame times; step down only if slow.
@@ -639,6 +713,7 @@ function tick(dt) {
       // On the bonus run you keep steering until you land (or 8 s pass).
       s.step(dt, G.bonusWait ? input() : {});
       handleEvents(false);
+      if (G.tut && G.bonusWait) tutorialTick(dt);
       if (G.bonusWait && G.phaseT > 8) { G.bonusWait = false; G.bonusAt = G.phaseT; }
       if (!G.bonusWait && G.phaseT > 2.2 && G.phaseT - G.bonusAt > (G.L.bonus ? 1.6 : 0)) completePanel();
       if (!G.bonusWait) endTouch();
@@ -670,7 +745,10 @@ function loop(now) {
 }
 
 /* ---------------- boot ---------------- */
-$('#btn-play').addEventListener('click', () => play(Save.data.level));
+// Brand-new players get the tutorial first.
+$('#btn-play').addEventListener('click', () => play(Save.data.level === 1 && !Save.data.tutorialDone ? 0 : Save.data.level));
+$('#btn-howto').addEventListener('click', () => play(0));
+$('#btn-tut-skip').addEventListener('click', () => { Sound.tap(); Save.data.tutorialDone = true; Save.save(); play(Save.data.level); });
 $('#btn-shop').addEventListener('click', () => { Sound.init(); Sound.tap(); Sound.music(MENU_SONG); openShop(); });
 $('#btn-levels').addEventListener('click', () => { Sound.init(); Sound.tap(); openLevels(); });
 $('#btn-shop-back').addEventListener('click', () => { Sound.tap(); refreshTitle(); setPhase('title'); });
