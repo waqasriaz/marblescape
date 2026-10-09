@@ -262,7 +262,7 @@ export class Sim {
             const u = -((cols - 1) * bw) / 2 + c * bw + (row % 2 ? 0.2 : -0.2);
             const p0 = { x: o.x + rx * u, y: o.y + bh / 2 + row * bh + 0.002, z: o.z + rz * u };
             const body = w.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(p0.x, p0.y, p0.z).setRotation(qY(o.yaw)).setSleeping(true).setAngularDamping(0.4));
-            w.createCollider(R.ColliderDesc.cuboid(bw / 2 - 0.01, bh / 2, bd / 2).setDensity(1.2).setFriction(0.7).setRestitution(0.05), body);
+            w.createCollider(R.ColliderDesc.cuboid(bw / 2 - 0.01, bh / 2, bd / 2).setDensity(0.8).setFriction(0.6).setRestitution(0.05), body);
             bricks.push({ body, p0 });
           }
         }

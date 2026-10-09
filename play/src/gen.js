@@ -424,7 +424,6 @@ const M = {
     const i0 = b.idx();
     b.straight(16);
     const i1 = b.idx();
-    b.railsOff();
     for (let k = 0; k < 8; k++) {
       const f = b.samples[Math.round(i0 + ((i1 - i0) * (k + 1)) / 9)];
       const u = ((k % 3) - 1) * 3.0 + (r() - 0.5) * 0.5;   // outer ones close to the wall: no gap to get wedged in
@@ -432,7 +431,9 @@ const M = {
       b.obstacles.push({ type: 'bumper', x: p[0], y: p[1], z: p[2], yaw: f.yaw, s: f.s, u, r: 0.4 });
     }
     b.coinsAlong(i0, i1, 5, 'zigzag');
-    b.straight(2.5, { w1: 5 });
+    // The walls carry on while the track narrows, funnelling a ball that left along the wall back to the middle.
+    b.straight(5, { w1: 5 });
+    b.railsOff();
   },
   narrow(b, r, d) {
     b.straight(2, { w1: 2.7 - d * 0.9 });
@@ -510,10 +511,13 @@ const M = {
     const n = d > 0.45 ? 2 : 1;
     for (let k = 0; k < n; k++) {
       const glass = d > 0.25 && r() < (k ? 0.6 : 0.25);
-      if (!glass && r() < 0.55) b.zone('boost', b.frame(), 3);
+      // Brick walls always get a boost pad, so you hit them hard enough to scatter them instead of riding up the pile.
+      // (The roll is kept so the rest of the level's layout doesn't shift.)
+      r();
+      if (!glass) b.zone('boost', b.frame(), 3);
       b.straight(6);
       const f = b.frame();
-      b.obstacles.push(Object.assign(f, glass ? { type: 'glass' } : { type: 'bricks', rows: d > 0.5 ? 4 : 3 }));
+      b.obstacles.push(Object.assign(f, glass ? { type: 'glass' } : { type: 'bricks', rows: 3 }));
       b.straight(2.5);
       b.gem(b.frame());
       b.straight(5.5);
@@ -648,10 +652,12 @@ function checkpoint(b) {
 
 export function generateLevel(n, opts = {}) {
   const r = mulberry32(n * 9973 + 17);
-  const lap = Math.floor((n - 1) / (5 * WORLDS.length));
-  const d = Math.min(1, (n - 1) / 30);
-  const wi = Math.floor((n - 1) / 5) % WORLDS.length, world = WORLDS[wi];
-  const boss = n % 5 === 0;
+  // The daily challenge: every module unlocked, medium-hard, world by day, no boss or rivals.
+  const daily = opts.daily || null;
+  const lap = daily ? 0 : Math.floor((n - 1) / (5 * WORLDS.length));
+  const d = daily ? 0.55 : Math.min(1, (n - 1) / 30);
+  const wi = daily ? daily.day % WORLDS.length : Math.floor((n - 1) / 5) % WORLDS.length, world = WORLDS[wi];
+  const boss = !daily && n % 5 === 0;
   const b = new Builder(r);
   b.G = world.gravity || 24;
 
@@ -664,8 +670,8 @@ export function generateLevel(n, opts = {}) {
 
   // Each world leans on its own favourite pieces.
   const pool = POOL.filter((p) => n >= p.from).map((p) => (world.favor.includes(p.n) ? Object.assign({}, p, { w: p.w * 2.5 }) : p));
-  const fresh = POOL.filter((p) => p.from === n).map((p) => p.n);
-  const count = opts.modules || Math.min(28, 13 + Math.floor(n * 0.4)) + lap * 2;
+  const fresh = daily ? [] : POOL.filter((p) => p.from === n).map((p) => p.n);
+  const count = opts.modules || (daily ? 16 : Math.min(28, 13 + Math.floor(n * 0.4)) + lap * 2);
   const plan = [];
   let prev = '', hard = false;
   for (let i = 0; i < count; i++) {
@@ -721,11 +727,11 @@ export function generateLevel(n, opts = {}) {
   }
   if (chase) putPower(chase.s0 - 3, pr() < 0.6 ? 'shield' : 'x2');
 
-  const isRace = !chasePlan && n % 4 === 0;
+  const isRace = !chasePlan && !daily && n % 4 === 0;
   const bonus = layFinish(b, !isRace);
 
   if (chase) chase.s1 = b.finish.s;
-  return build(b, { n, world, d, race: isRace, boss: !!chasePlan, showcase: false, chase, bonus, powerups, plan: chasePlan ? [...plan, 'boss', ...chasePlan] : plan, sections });
+  return build(b, { n, world, d, race: isRace, boss: !!chasePlan, showcase: false, chase, bonus, powerups, daily, plan: chasePlan ? [...plan, 'boss', ...chasePlan] : plan, sections });
 }
 
 // Finish line. Except in races, a bonus run follows: four speed pads, a kicker, and landing bands
@@ -774,6 +780,10 @@ function layFinish(b, withBonus) {
 
   return bonus;
 }
+
+// The daily challenge for a given day (days since 1 Jan 1970, UTC): the same level for everyone that day.
+export const DAILY_BASE = 100000;
+export function generateDaily(day) { return generateLevel(DAILY_BASE + day, { daily: { day } }); }
 
 // The how-to-play track: short and walled, one lesson per stretch. `tutorial.steps` says where each starts.
 export function generateTutorial() {

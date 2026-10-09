@@ -1,12 +1,12 @@
 /* Marble Scape — game flow, input, HUD, shop and saving. */
 import RAPIER from '../vendor/rapier.es.js';
-import { generateLevel, generateTutorial, WORLDS } from './gen.js';
+import { generateLevel, generateTutorial, generateDaily, DAILY_BASE, WORLDS } from './gen.js';
 import { Sim, P } from './physics.js';
 import { View } from './view.js';
 import { Sound, MENU_SONG, BOSS_SONG } from './audio.js';
 import { SKINS, skinById, drawSwatch } from './skins.js';
 import { TRAILS, CELEBRATIONS, drawTrail, drawCelebration } from './cosmetics.js';
-import { ACH, DAILY, GHOST_HZ, fillDefaults, progress, checkAchievements, dailyState, collectDaily, loadGhost, saveGhost } from './meta.js';
+import { ACH, DAILY, GHOST_HZ, fillDefaults, progress, checkAchievements, dailyState, collectDaily, loadGhost, saveGhost, challengeState, finishChallenge, CHALLENGE_REWARD, streakBonus } from './meta.js';
 
 const $ = (s) => document.querySelector(s);
 const DEBUG = /[?&]debug\b/.test(location.search);
@@ -38,7 +38,8 @@ Sound.setMuted(Save.data.muted);
 
 let view = null;
 const G = { phase: 'boot', L: null, sim: null, demo: true, n: 1, t0: 0, coins: 0, combo: 0, comboT: 0, phaseT: 0, count: 4, demoEnd: 0, result: null, fpsT: 0, fpsN: 0 };
-const SCREENS = { title: '#s-title', shop: '#s-shop', levels: '#s-levels', ach: '#s-ach', daily: '#s-daily', ready: '#s-ready', panel: '#s-panel' };
+const SCREENS = { title: '#s-title', shop: '#s-shop', levels: '#s-levels', ach: '#s-ach', daily: '#s-daily', challenge: '#s-challenge', ready: '#s-ready', panel: '#s-panel' };
+const MENUS = ['title', 'shop', 'levels', 'ach', 'daily', 'challenge'];   // screens that show the demo level behind them
 
 function setPhase(p, screen = p) {
   G.phase = p;
@@ -55,7 +56,7 @@ function loadLevel(n, demo) {
   if (G.sim) G.sim.dispose();
   G.n = n;
   G.demo = demo;
-  G.L = n === 0 ? generateTutorial() : generateLevel(n);
+  G.L = n === 0 ? generateTutorial() : n >= DAILY_BASE ? generateDaily(n - DAILY_BASE) : generateLevel(n);
   G.sim = new Sim(RAPIER, G.L, { autopilot: demo });
   view.load(G.L, G.sim, Save.data.skin);
   G.coins = 0;
@@ -142,6 +143,9 @@ function refreshTitle() {
   $('#title-world').textContent = worldOf(lv).name + (isBoss(lv) ? ' · Boss' : lv % 4 === 0 ? ' · Race' : '');
   $('#btn-sound').textContent = Save.data.muted ? 'Sound: off' : 'Sound: on';
   $('#btn-quality').textContent = qualityLabel();
+  const cs = challengeState(Save.data), cw = WORLDS[cs.day % WORLDS.length].name;
+  $('#challenge-sub').textContent = `${cw} · ${cs.doneToday ? `best ${cs.best.toFixed(1)} s` : 'new today'}${cs.streak ? ` · ${cs.streak}-day streak` : ''}`;
+  $('#btn-challenge').classList.toggle('done', cs.doneToday);
 }
 
 function play(n) {
@@ -150,26 +154,26 @@ function play(n) {
   keepAwake();
   clearInterval(G.autoTimer);
   loadLevel(n, false);
-  const tut = !!G.L.tutorial;
-  $('#ready-world').textContent = tut ? 'How to play' : G.L.world.name;
-  $('#ready-title').textContent = tut ? 'Tutorial' : `Level ${n}`;
+  const tut = !!G.L.tutorial, chal = !!G.L.daily;
+  $('#ready-world').textContent = tut ? 'How to play' : chal ? `Daily challenge · ${G.L.world.name}` : G.L.world.name;
+  $('#ready-title').textContent = tut ? 'Tutorial' : chal ? dayLabel(G.L.daily.day) : `Level ${n}`;
   G.tut = tut ? { i: 0, gem: false, note: '', noteT: 0, key: '', shown: 0, pending: false } : null;
   $('#coach').hidden = true;
   const badge = $('#ready-race');
-  badge.hidden = !G.L.race && !G.L.boss;
-  badge.className = 'badge' + (G.L.boss ? ' boss' : '');
-  badge.textContent = G.L.boss ? `Boss · outrun ${G.L.world.boss.name}` : 'Race · beat 3 rivals';
+  badge.hidden = !G.L.race && !G.L.boss && !chal;
+  badge.className = 'badge' + (G.L.boss ? ' boss' : chal ? ' daily' : '');
+  badge.textContent = G.L.boss ? `Boss · outrun ${G.L.world.boss.name}` : chal ? 'Same level for everyone today' : 'Race · beat 3 rivals';
   $('#hud-boss').hidden = true;
   $('#hud-boss-name').textContent = G.L.boss ? G.L.world.boss.name : '';
   $('#ready-go').textContent = isTouch ? (G.L.race ? 'Touch to start the race' : 'Touch to start') : 'Press ↑ to start';
   if (!isTouch) $('.howto span:last-child').textContent = '↑ rolls, ↓ brakes and reverses, ← → steer. P pauses.';
-  $('#hud-level').textContent = tut ? 'TUTORIAL' : `LEVEL ${n}`;
+  $('#hud-level').textContent = tut ? 'TUTORIAL' : chal ? 'DAILY' : `LEVEL ${n}`;
   $('#hud-place').hidden = !G.L.race;
   $('#hud-coin-n').textContent = '0';
   const best = tut ? null : Save.data.best[n], ghost = tut ? null : loadGhost(n);
   view.setGhost(ghost);
   $('#ready-best').hidden = best == null;
-  if (best != null) $('#ready-best').textContent = `Your best: ${best.toFixed(1)} s${ghost ? ' · race your ghost' : ''}`;
+  if (best != null) $('#ready-best').textContent = `Your best${chal ? ' today' : ''}: ${best.toFixed(1)} s${ghost ? ' · race your ghost' : ''}`;
   if (G.L.boss) $('#ready-world').textContent = `${G.L.world.name} · Boss level`;
   G.rec = [];
   Sound.music(G.L.world.music, G.L.boss || G.L.race);
@@ -205,6 +209,7 @@ function onFinish(place) {
 function completePanel() {
   const r = G.result, n = G.n;
   if (G.L.tutorial) { tutorialPanel(); return; }
+  if (G.L.daily) { challengePanel(); return; }
   const stars = r.falls === 0 ? 3 : r.falls <= 2 ? 2 : 1;
   // Bosses pay 100, plus 150 the first time you outrun each one.
   const firstBoss = G.L.boss && !Save.data.bossBeat[G.L.world.id];
@@ -230,6 +235,59 @@ function completePanel() {
     actions: [
       { label: `Next level`, primary: true, auto: 6, fn: () => play(n + 1) },
       { label: 'Replay', fn: () => play(n) },
+      { label: 'Home', ghost: true, fn: toTitle },
+    ],
+  });
+}
+
+/* ---------------- daily challenge ---------------- */
+const dayLabel = (day) => new Date(day * 86400000).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const fmtLeft = (ms) => { const m = Math.max(0, Math.floor(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : m >= 1 ? `${m} min` : 'under a minute'; };
+function openChallenge() {
+  const st = challengeState(Save.data), L = generateDaily(st.day);
+  $('#challenge-date').textContent = dayLabel(st.day);
+  $('#challenge-world').textContent = L.world.name;
+  $('#challenge-meta').textContent = `${Math.round(L.length)} m · ${L.sections.length} sections · the same level for everyone today`;
+  const dl = $('#challenge-stats');
+  dl.replaceChildren();
+  for (const [k, v] of [['Your best today', st.best != null ? `${st.best.toFixed(1)} s` : 'Not played yet'], ['Streak', st.streak ? `${st.streak} day${st.streak === 1 ? '' : 's'}` : 'Start one today']]) {
+    const dt = document.createElement('dt'); dt.textContent = k;
+    const dd = document.createElement('dd'); dd.textContent = v;
+    dl.append(dt, dd);
+  }
+  // What finishing today pays (the streak would go up by one).
+  const next = st.doneToday ? 0 : CHALLENGE_REWARD + streakBonus(st.streak + 1);
+  $('#challenge-reward').textContent = st.doneToday ? 'Done for today! Play again to beat your time.' : `Finish it for +${next} coins${st.streak ? ' (streak bonus included)' : ''}.`;
+  $('#btn-challenge-play').textContent = st.doneToday ? 'Beat your time' : "Play today's challenge";
+  G.challengeDay = st.day;
+  G.cdKey = '';
+  challengeCountdown();
+  setPhase('challenge');
+}
+function challengeCountdown() {
+  const st = challengeState(Save.data);
+  if (st.day !== G.challengeDay) { openChallenge(); return; }   // midnight passed while the screen was open
+  const text = `New challenge in ${fmtLeft(st.nextIn)}`;
+  if (G.cdKey !== text) { G.cdKey = text; $('#challenge-next').textContent = text; }
+}
+function challengePanel() {
+  const r = G.result, day = G.L.daily.day;
+  const res = finishChallenge(Save.data, day, r.time);
+  const earned = r.coins * (r.mult || 1);
+  if ((r.mult || 1) === 5) Save.data.stats.x5++;
+  Save.data.coins += earned;
+  achievements();
+  const stats = [['Time', `${r.time.toFixed(1)} s${res.newBest && !res.first ? '  new best!' : ''}`], ['Best today', `${res.best.toFixed(1)} s`],
+    ['Coins collected', r.mult > 1 ? `${r.coins} × ${r.mult} = ${earned}` : String(r.coins)], ['Streak', `${res.streak} day${res.streak === 1 ? '' : 's'}`]];
+  if (res.reward) stats.push(['Challenge reward', `+${res.reward}`]);
+  panel('complete', {
+    win: true,
+    eyebrow: `Daily challenge · ${dayLabel(day)}`,
+    title: res.first ? 'Challenge complete!' : res.newBest ? 'New best time!' : 'Finished!',
+    text: res.first ? 'Come back tomorrow for a new one and keep your streak going.' : 'Already done today. Every run counts toward your best time.',
+    stats,
+    actions: [
+      { label: 'Try again', primary: true, fn: () => play(G.n) },
       { label: 'Home', ghost: true, fn: toTitle },
     ],
   });
@@ -618,8 +676,8 @@ window.addEventListener('keydown', (e) => {
     if (!G.demo) e.preventDefault();
     In.keys.add(k);
     if (G.phase === 'ready') startRun();
-  } else if (e.code === 'Escape' && ['shop', 'levels', 'ach'].includes(G.phase)) {
-    $(`#btn-${G.phase === 'ach' ? 'ach' : G.phase}-back`).click();
+  } else if (e.code === 'Escape' && ['shop', 'levels', 'ach', 'challenge'].includes(G.phase)) {
+    $(`#btn-${G.phase}-back`).click();
   } else if (e.code === 'Escape' || e.code === 'KeyP') {
     if (G.phase === 'paused') resume(); else pause();
   }
@@ -675,7 +733,7 @@ function tick(dt) {
   const s = G.sim;
   G.phaseT += dt;
   switch (G.phase) {
-    case 'title': case 'shop': case 'levels': case 'ach': case 'daily':
+    case 'title': case 'shop': case 'levels': case 'ach': case 'daily': case 'challenge':
       s.step(dt, {});
       handleEvents(true);
       if (s.player.finished || s.t > 100) { G.demoEnd += dt; if (G.demoEnd > 2.5) loadLevel(G.n, true); }
@@ -726,7 +784,8 @@ function tick(dt) {
   }
   // The demo may have just restarted with a fresh simulation: draw that one, not the old one.
   view.ghostT = G.phase === 'play' || G.phase === 'won' ? G.sim.t - G.t0 : 0;
-  view.frame(dt, G.sim, ['title', 'shop', 'levels', 'ach', 'daily'].includes(G.phase) ? 'title' : G.phase);
+  view.frame(dt, G.sim, MENUS.includes(G.phase) ? 'title' : G.phase);
+  if (G.phase === 'challenge') challengeCountdown();
   if (!G.demo) hud();
 }
 
@@ -748,6 +807,9 @@ function loop(now) {
 // Brand-new players get the tutorial first.
 $('#btn-play').addEventListener('click', () => play(Save.data.level === 1 && !Save.data.tutorialDone ? 0 : Save.data.level));
 $('#btn-howto').addEventListener('click', () => play(0));
+$('#btn-challenge').addEventListener('click', () => { Sound.init(); Sound.tap(); openChallenge(); });
+$('#btn-challenge-back').addEventListener('click', () => { Sound.tap(); refreshTitle(); setPhase('title'); });
+$('#btn-challenge-play').addEventListener('click', () => play(DAILY_BASE + challengeState(Save.data).day));
 $('#btn-tut-skip').addEventListener('click', () => { Sound.tap(); Save.data.tutorialDone = true; Save.save(); play(Save.data.level); });
 $('#btn-shop').addEventListener('click', () => { Sound.init(); Sound.tap(); Sound.music(MENU_SONG); openShop(); });
 $('#btn-levels').addEventListener('click', () => { Sound.init(); Sound.tap(); openLevels(); });

@@ -18,6 +18,7 @@ export const ACH = [
   { id: 'boss1', name: 'Boss Slayer', desc: 'Outrun your first boss.', reward: 150, goal: 1, val: bosses },
   { id: 'x5', name: 'Bullseye', desc: 'Land on x5 at the end of a level.', reward: 150, goal: 1, val: (S) => S.stats.x5 },
   { id: 'gems50', name: 'Gem Hunter', desc: 'Collect 50 gems.', reward: 300, goal: 50, val: (S) => S.stats.gems },
+  { id: 'chal1', name: 'Challenger', desc: 'Finish a daily challenge.', reward: 100, goal: 1, val: (S) => S.challenge.total },
   { id: 'style', name: 'Show-off', desc: 'Own 3 trails or celebrations.', reward: 150, goal: 3, val: extras },
   { id: 'falls100', name: 'Gravity Fan', desc: 'Fall off 100 times.', reward: 100, goal: 100, val: (S) => S.stats.falls },
   { id: 'stars30', name: 'Star Collector', desc: 'Earn 30 stars.', reward: 200, goal: 30, val: starsTotal },
@@ -31,6 +32,7 @@ export const ACH = [
   { id: 'skins10', name: 'Collector', desc: 'Own 10 skins.', reward: 400, goal: 10, val: (S) => S.owned.length },
   { id: 'coins5000', name: 'Treasure Hunter', desc: 'Pick up 5,000 coins on the track.', reward: 500, goal: 5000, val: (S) => S.stats.coins },
   { id: 'level50', name: 'Marathon', desc: 'Reach level 50.', reward: 800, goal: 50, val: (S) => S.level },
+  { id: 'chal7', name: 'Daily Devotee', desc: 'Finish the daily challenge 7 days in a row.', reward: 500, goal: 7, val: (S) => S.challenge.bestStreak },
   { id: 'boss8', name: 'Legend', desc: 'Outrun all 8 bosses.', reward: 1000, goal: 8, val: bosses },
 ];
 
@@ -41,6 +43,7 @@ export function fillDefaults(S) {
   S.daily = Object.assign({ last: '', streak: 0, best: 0 }, S.daily);
   S.ghosts = S.ghosts || [];
   S.bossBeat = S.bossBeat || {};
+  S.challenge = Object.assign({ last: -1, streak: 0, bestStreak: 0, total: 0, best: null, bestDay: -1 }, S.challenge);
   S.ownedTrails = S.ownedTrails || ['skin'];
   S.trail = S.trail || 'skin';
   S.ownedFx = S.ownedFx || ['confetti'];
@@ -62,6 +65,34 @@ export function checkAchievements(S) {
     fresh.push(a);
   }
   return fresh;
+}
+
+/* ---------------- daily challenge: one level a day, the same for everyone (days in UTC) ---------------- */
+export const utcDay = (now = Date.now()) => Math.floor(now / 86400000);
+export const CHALLENGE_REWARD = 100;
+const STREAK_STEP = 25, STREAK_MAX = 150;
+export const streakBonus = (streak) => Math.min(STREAK_MAX, STREAK_STEP * Math.max(0, streak - 1));
+
+// Where you stand today. The streak counts days in a row you've finished; it's still alive if you finished yesterday.
+export function challengeState(S, now = Date.now()) {
+  const day = utcDay(now), C = S.challenge;
+  const alive = C.last === day || C.last === day - 1;
+  return { day, doneToday: C.last === day, best: C.bestDay === day ? C.best : null, streak: alive ? C.streak : 0, nextIn: (day + 1) * 86400000 - now };
+}
+// Records a finish of the challenge for `day`. Only the first finish each day pays out.
+export function finishChallenge(S, day, time) {
+  const C = S.challenge, first = C.last !== day;
+  if (first) {
+    C.streak = C.last === day - 1 ? C.streak + 1 : 1;
+    C.last = day;
+    C.total++;
+    C.bestStreak = Math.max(C.bestStreak, C.streak);
+  }
+  const newBest = C.bestDay !== day || time < C.best;
+  if (newBest) { C.best = time; C.bestDay = day; }
+  const reward = first ? CHALLENGE_REWARD + streakBonus(C.streak) : 0;
+  S.coins += reward;
+  return { first, newBest, reward, streak: C.streak, best: C.best };
 }
 
 /* ---------------- daily reward: a seven-day streak ---------------- */

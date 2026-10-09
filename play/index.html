@@ -179,6 +179,19 @@ p { margin: 0; }
 .card h2 { font-size: clamp(26px, 8vw, 32px); }
 .badge { align-self: center; font: 700 11px/1 var(--f-body); letter-spacing: 0.14em; text-transform: uppercase; color: #3a1f00; background: var(--gold); border-radius: 6px; padding: 5px 8px; }
 .badge.boss { color: #ffffff; background: var(--rose); }
+.badge.daily { color: #ffffff; background: #7c5cff; }
+/* daily challenge */
+.btn.challenge { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 13px 16px 12px; color: #ffffff;
+  background: linear-gradient(135deg, #ff4f86, #7c5cff); box-shadow: 0 6px 0 #4a2a9e, inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+.btn.challenge:active { box-shadow: 0 1px 0 #4a2a9e; }
+.btn.challenge b { font: 400 19px/1 var(--f-display); letter-spacing: 0.03em; text-transform: none; }
+.btn.challenge small { font: 700 12px/1.2 var(--f-body); letter-spacing: 0.06em; opacity: 0.95; }
+.btn.challenge.done { background: linear-gradient(135deg, #2fbf71, #2a8fd6); box-shadow: 0 6px 0 #1d6a7a, inset 0 2px 0 rgba(255, 255, 255, 0.35); }
+#s-challenge { justify-content: flex-start; }
+.chal { margin-top: 8px; }
+.chal h2 { color: var(--gold); text-shadow: 0 4px 0 #7a4a00; }
+.chal-reward { font: 700 15px/1.35 var(--f-body); color: var(--mint); }
+.chal-next { font: 600 13px/1 var(--f-mono); color: var(--ink-dim); }
 .howto { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--ink-dim); font-weight: 600; }
 .hand { width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.18); animation: press 1.4s ease-in-out infinite; flex: none; }
 @keyframes press { 0%, 100% { transform: translateX(0) scale(1); } 20% { transform: translateX(0) scale(0.85); } 50% { transform: translateX(-16px) scale(0.85); } 80% { transform: translateX(16px) scale(0.85); } }
@@ -294,6 +307,7 @@ body:has(#coach:not([hidden])) .flash.small { top: 34%; }
       <span class="worldline" id="title-world">Green Meadow</span>
     </div>
     <button class="btn primary big" id="btn-play">Play</button>
+    <button class="btn challenge" id="btn-challenge"><b>Daily challenge</b><small id="challenge-sub">Today's level</small></button>
     <div class="row">
       <button class="btn" id="btn-shop">Shop</button>
       <button class="btn" id="btn-levels">Levels</button>
@@ -319,6 +333,19 @@ body:has(#coach:not([hidden])) .flash.small { top: 34%; }
   </div>
   <p class="shop-note" id="shop-note"></p>
   <div class="skins" id="skins" role="tabpanel"></div>
+</section>
+
+<section id="s-challenge" class="screen dim" hidden>
+  <div class="topbar"><div class="shop-head"><button class="back" id="btn-challenge-back"><span aria-hidden="true">‹</span> Back</button><h2>Daily</h2><span class="worldline" id="challenge-date"></span></div></div>
+  <div class="panel chal">
+    <p class="eyebrow">Today's challenge</p>
+    <h2 id="challenge-world">Green Meadow</h2>
+    <p class="ptext" id="challenge-meta"></p>
+    <dl class="stats" id="challenge-stats"></dl>
+    <p class="chal-reward" id="challenge-reward"></p>
+    <button class="btn primary big" id="btn-challenge-play">Play today's challenge</button>
+    <p class="chal-next" id="challenge-next"></p>
+  </div>
 </section>
 
 <section id="s-levels" class="screen dim" hidden>
